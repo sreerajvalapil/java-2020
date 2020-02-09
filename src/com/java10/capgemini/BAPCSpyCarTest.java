@@ -1,6 +1,7 @@
-package com.capgemini;
+package com.java10.capgemini;
 
 import java.util.*;
+import java.util.Scanner;
 
 public class BAPCSpyCarTest {
     public static void main(String[] args) {
@@ -75,29 +76,61 @@ public class BAPCSpyCarTest {
             boolean isReturned = false;
             String pickedCarName = "";
             Result result = new Result();
+            if (inconsistent(spyEventList)) {
+                result.setSpyName(spyName);
+                result.setTotalCost(0);
+                result.setTotalCostString("INCONSISTENT");
+                continue;
+            }
+
+            List<BAPCSpyCarTest.Interval> intervalList = new ArrayList<>();
+
             for (BapcEvent event : spyEventList) {
                 if (event.eventType.isPickedEvent()) {
+                    BAPCSpyCarTest.Interval interval = new BAPCSpyCarTest.Interval();
+                    interval.setStart(event.getTimeOfEvent());
+                    intervalList.add(interval);
+
                     if (isPickedUp && !isReturned) {
                         result.setSpyName(spyName);
                         result.setTotalCost(0);
                         result.setTotalCostString("INCONSISTENT");
+                        break;
                     } else {
                         isPickedUp = true;
+                        isReturned = false;
                         pickedCarName = event.eventType.getPickedCarName();
                         result.setSpyName(spyName);
                         result.setTotalCost(result.getTotalCost()
                                 + carNameCarMap.get(pickedCarName).getPickUpCost());
                     }
                 } else if (event.eventType.isReturnEvent()) {
+                    if (!intervalList.isEmpty()) {
+                        BAPCSpyCarTest.Interval interval = intervalList.get(intervalList.size() - 1);
+                        if (interval.getEnd() == -1)
+                            interval.setEnd(event.getTimeOfEvent());
+                        else {
+                            BAPCSpyCarTest.Interval interval1 = new BAPCSpyCarTest.Interval();
+                            interval1.setEnd(event.getTimeOfEvent());
+                            intervalList.add(interval1);
+                        }
+                    } else {
+                        BAPCSpyCarTest.Interval interval = new BAPCSpyCarTest.Interval();
+                        interval.setEnd(event.getTimeOfEvent());
+                        intervalList.add(interval);
+
+                    }
                     if (isPickedUp) {
                         double currentCost = result.getTotalCost() +
                                 event.eventType.getDistanceInKM() * carNameCarMap.get(pickedCarName).getKmPrice();
                         result.setTotalCost(currentCost);
                         isReturned = true;
+                        isPickedUp = false;
                     } else {
                         result.setSpyName(spyName);
                         result.setTotalCost(0);
                         result.setTotalCostString("INCONSISTENT");
+                        break;
                     }
 
                 } else if (event.eventType.isAccidentEvent()) {
@@ -105,17 +138,32 @@ public class BAPCSpyCarTest {
                         result.setSpyName(spyName);
                         result.setTotalCost(0);
                         result.setTotalCostString("INCONSISTENT");
+                        break;
                     } else if (isPickedUp) {
                         double currentCost = result.getTotalCost() +
                                 (event.eventType.getAccidentSeverityPercentage() *
                                         (carNameCarMap.get(pickedCarName).getCatalogePrice() / 100.0f));
                         result.setTotalCost(currentCost);
                     }
-
                 }
-
             }
-            if (!isPickedUp || !isReturned) {
+            // intervalList.stream().forEach(obj->{System.out.println(obj.toString());});
+            if (intervalList.stream().filter(obj -> obj.getStart() == -1 || obj.getEnd() == -1).count() > 0) {
+                result.setSpyName(spyName);
+                result.setTotalCost(0);
+                result.setTotalCostString("INCONSISTENT");
+                continue;
+            }
+                return true;
+            intervalList.sort(Comparator.comparing(BAPCSpyCarTest.Interval::getStart));
+
+
+            if (isOverlap(intervalList.toArray(new Interval[intervalList.size()]), intervalList.size())) {
+                return true;
+            }
+
+
+            if (!isReturned) {
                 result.setSpyName(spyName);
                 result.setTotalCost(0);
                 result.setTotalCostString("INCONSISTENT");
@@ -124,6 +172,84 @@ public class BAPCSpyCarTest {
 
         }
         return resultsArray;
+    }
+
+    private static boolean inconsistent(List<BapcEvent> spyEventList) {
+        List<BAPCSpyCarTest.Interval> intervalList = new ArrayList<>();
+
+
+        for (BAPCSpyCarTest.BapcEvent event : spyEventList) {
+            if (event.eventType.isPickedEvent()) {
+                BAPCSpyCarTest.Interval interval = new BAPCSpyCarTest.Interval();
+                interval.setStart(event.getTimeOfEvent());
+                intervalList.add(interval);
+            }
+            if (event.eventType.isReturnEvent()) {
+                if (!intervalList.isEmpty()) {
+                    BAPCSpyCarTest.Interval interval = intervalList.get(intervalList.size() - 1);
+                    if (interval.getEnd() == -1)
+                        interval.setEnd(event.getTimeOfEvent());
+                    else {
+                        BAPCSpyCarTest.Interval interval1 = new BAPCSpyCarTest.Interval();
+                        interval1.setEnd(event.getTimeOfEvent());
+                        intervalList.add(interval1);
+                    }
+                } else {
+                    BAPCSpyCarTest.Interval interval = new BAPCSpyCarTest.Interval();
+                    interval.setEnd(event.getTimeOfEvent());
+                    intervalList.add(interval);
+
+                }
+            }
+        }
+        // intervalList.stream().forEach(obj->{System.out.println(obj.toString());});
+        if (intervalList.stream().filter(obj -> obj.getStart() == -1 || obj.getEnd() == -1).count() > 0)
+            return true;
+        intervalList.sort(Comparator.comparing(BAPCSpyCarTest.Interval::getStart));
+
+
+        if (isOverlap(intervalList.toArray(new Interval[intervalList.size()]), intervalList.size())) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static class Interval {
+        private int start = -1;
+        private int end = -1;
+
+        public Interval() {
+        }
+
+        public Interval(int start, int end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        public int getStart() {
+            return start;
+        }
+
+        public int getEnd() {
+            return end;
+        }
+
+        public void setStart(int start) {
+            this.start = start;
+        }
+
+        public void setEnd(int end) {
+            this.end = end;
+        }
+
+        @Override
+        public String toString() {
+            return "Interval{" +
+                    "start=" + start +
+                    ", end=" + end +
+                    '}';
+        }
     }
 
     private static class Result {
@@ -150,7 +276,7 @@ public class BAPCSpyCarTest {
         public void setTotalCostString(String totalCostString) {
             this.totalCostString = totalCostString;
         }
-//Good ss
+
         public String getTotalCostString() {
             if (!"INCONSISTENT".equals(totalCostString)) {
                 return String.valueOf(Math.round(totalCost));
@@ -206,6 +332,18 @@ public class BAPCSpyCarTest {
             this.timeOfEvent = timeOfEvent;
             this.spyName = spyName;
             this.eventType = eventType;
+        }
+
+        public int getTimeOfEvent() {
+            return timeOfEvent;
+        }
+
+        public String getSpyName() {
+            return spyName;
+        }
+
+        public EventType getEventType() {
+            return eventType;
         }
     }
 
@@ -295,5 +433,10 @@ public class BAPCSpyCarTest {
 
     }
 
-
+    private static boolean isOverlap(BAPCSpyCarTest.Interval[] arr, int n) {
+        for (int i = 1; i < n; i++)
+            if (arr[i].end <= arr[i - 1].end)
+                return true;
+        return false;
+    }
 }

@@ -1,8 +1,8 @@
-package com.capgemini;
+package com.java10.capgemini;
 
 import java.util.*;
 
-public class BAPCSpyCarTest {
+public class BAPCSpyCarTest1 {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         List<Result> finalResults = new ArrayList<>();
@@ -74,6 +74,52 @@ public class BAPCSpyCarTest {
             boolean isPickedUp = false;
             boolean isReturned = false;
             String pickedCarName = "";
+
+           // boolean isPrevioslyPickedUp = false;
+            int lastReturnedTime = 0;
+            List<Interval> intervalList = new ArrayList<>() ;
+
+
+            for (BapcEvent event : spyEventList) {
+                if (event.eventType.isPickedEvent()) {
+                    Interval interval = new Interval();
+                    interval.setStart(event.getTimeOfEvent());
+                    intervalList.add(interval);
+                }
+                if (event.eventType.isReturnEvent()) {
+                    if(!intervalList.isEmpty()) {
+                        Interval interval = intervalList.get(intervalList.size()-1);
+                        if(interval.getEnd() == -1)
+                            interval.setEnd(event.getTimeOfEvent());
+                        else {
+                            Interval interval1 = new Interval();
+                            interval1.setEnd(event.getTimeOfEvent());
+                            intervalList.add(interval1);
+                        }
+                    } else {
+                        Interval interval = new Interval();
+                        interval.setEnd(event.getTimeOfEvent());
+                        intervalList.add(interval);
+
+                    }
+                }
+            }
+           // intervalList.stream().forEach(obj->{System.out.println(obj.toString());});
+            long count = intervalList.stream().filter(obj->obj.getStart() ==-1 || obj.getEnd()==-1).count();
+            //System.out.println("count :" +count);
+
+            intervalList.sort(Comparator.comparing(Interval::getStart));
+
+
+            if(count>0/* || isOverlap(intervalList.toArray(new Interval[intervalList.size()]),intervalList.size())*/) {
+                Result result = new Result();
+                result.setSpyName(spyName);
+                result.setTotalCost(0);
+                result.setTotalCostString("INCONSISTENT");
+                resultsArray.add(result);
+                continue;
+            }
+
             Result result = new Result();
             for (BapcEvent event : spyEventList) {
                 if (event.eventType.isPickedEvent()) {
@@ -81,8 +127,17 @@ public class BAPCSpyCarTest {
                         result.setSpyName(spyName);
                         result.setTotalCost(0);
                         result.setTotalCostString("INCONSISTENT");
+                        break;
                     } else {
+                        /*if (isPrevioslyPickedUp && event.timeOfEvent < lastReturnedTime) {
+                            result.setSpyName(spyName);
+                            result.setTotalCost(0);
+                            result.setTotalCostString("INCONSISTENT");
+                            break;
+                        }*/
                         isPickedUp = true;
+                        //isPrevioslyPickedUp = true;
+                        isReturned = false;
                         pickedCarName = event.eventType.getPickedCarName();
                         result.setSpyName(spyName);
                         result.setTotalCost(result.getTotalCost()
@@ -94,10 +149,13 @@ public class BAPCSpyCarTest {
                                 event.eventType.getDistanceInKM() * carNameCarMap.get(pickedCarName).getKmPrice();
                         result.setTotalCost(currentCost);
                         isReturned = true;
+                        isPickedUp = false;
+                        lastReturnedTime = event.timeOfEvent;
                     } else {
                         result.setSpyName(spyName);
                         result.setTotalCost(0);
                         result.setTotalCostString("INCONSISTENT");
+                        break;
                     }
 
                 } else if (event.eventType.isAccidentEvent()) {
@@ -105,6 +163,7 @@ public class BAPCSpyCarTest {
                         result.setSpyName(spyName);
                         result.setTotalCost(0);
                         result.setTotalCostString("INCONSISTENT");
+                        break;
                     } else if (isPickedUp) {
                         double currentCost = result.getTotalCost() +
                                 (event.eventType.getAccidentSeverityPercentage() *
@@ -115,7 +174,7 @@ public class BAPCSpyCarTest {
                 }
 
             }
-            if (!isPickedUp || !isReturned) {
+            if (!isReturned) {
                 result.setSpyName(spyName);
                 result.setTotalCost(0);
                 result.setTotalCostString("INCONSISTENT");
@@ -124,6 +183,43 @@ public class BAPCSpyCarTest {
 
         }
         return resultsArray;
+    }
+
+    private static class Interval {
+        private int start = -1;
+        private int end = -1;
+
+        public Interval() {
+        }
+
+        public Interval(int start, int end) {
+            this.start = start;
+            this.end = end;
+        }
+
+        public int getStart() {
+            return start;
+        }
+
+        public int getEnd() {
+            return end;
+        }
+
+        public void setStart(int start) {
+            this.start = start;
+        }
+
+        public void setEnd(int end) {
+            this.end = end;
+        }
+
+        @Override
+        public String toString() {
+            return "Interval{" +
+                    "start=" + start +
+                    ", end=" + end +
+                    '}';
+        }
     }
 
     private static class Result {
@@ -150,7 +246,7 @@ public class BAPCSpyCarTest {
         public void setTotalCostString(String totalCostString) {
             this.totalCostString = totalCostString;
         }
-//Good ss
+
         public String getTotalCostString() {
             if (!"INCONSISTENT".equals(totalCostString)) {
                 return String.valueOf(Math.round(totalCost));
@@ -206,6 +302,18 @@ public class BAPCSpyCarTest {
             this.timeOfEvent = timeOfEvent;
             this.spyName = spyName;
             this.eventType = eventType;
+        }
+
+        public int getTimeOfEvent() {
+            return timeOfEvent;
+        }
+
+        public String getSpyName() {
+            return spyName;
+        }
+
+        public EventType getEventType() {
+            return eventType;
         }
     }
 
@@ -295,5 +403,14 @@ public class BAPCSpyCarTest {
 
     }
 
+    private static boolean isOverlap(Interval[] arr, int n)
+    {
+        for (int i = 1; i < n; i++)
+            if (arr[i].end <= arr[i - 1].end)
+                return true;
+        return false;
+    }
+
 
 }
+
