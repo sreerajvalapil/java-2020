@@ -154,13 +154,13 @@ public class BAPCSpyCarTest {
                 result.setTotalCostString("INCONSISTENT");
                 continue;
             }
-                return true;
+              //  return true;
             intervalList.sort(Comparator.comparing(BAPCSpyCarTest.Interval::getStart));
 
 
-            if (isOverlap(intervalList.toArray(new Interval[intervalList.size()]), intervalList.size())) {
+           /* if (isOverlap(intervalList.toArray(new Interval[intervalList.size()]), intervalList.size())) {
                 return true;
-            }
+            }*/
 
 
             if (!isReturned) {

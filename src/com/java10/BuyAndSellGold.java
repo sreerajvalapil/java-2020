@@ -3,6 +3,62 @@ import java.util.*;
 
 public class BuyAndSellGold  {
 
+    int dayToBuy = 0 ;
+    int dayToSell = 0;
+
+    public static void main(String[] args) {
+        new BuyAndSellGold();
+    }
+
+    public BuyAndSellGold() {
+        // You can initiate and calculate things here
+        int buyDay = getBuyDay();
+        int sellDay = getSellDay() ;
+
+        int totalNumberOfDays = 10 ;
+       // int totalNumberOfDays = API.getNumDays() ;
+        int[] priceArray = new int[totalNumberOfDays];
+       /* for(int i = 0 ;i<totalNumberOfDays ;i++) {
+            int priceForDay = API.getPriceOnDay(i);
+            priceArray[i] = priceForDay ;
+        }*/
+
+        priceArray = new int[]{10, 2, 45, 78, 23};
+
+        int maxProfit = findMaxProfit(priceArray) ;
+        System.out.println("max profit  is : " + maxProfit) ;
+        System.out.println("day to buy  : " + dayToBuy) ;
+        System.out.println("day to sell : " + dayToSell) ;
+    }
+
+    public int findMaxProfit(int prices[]) {
+        int minprice =prices[0];
+        int minPriceIndex = 0;
+        int maxprofit = 0;
+
+        for (int i = 0; i < prices.length; i++) {
+            if (prices[i] < minprice) {
+                minPriceIndex = i ;
+                minprice = prices[i];
+            } else if (prices[i] - minprice > maxprofit) {
+                maxprofit = prices[i] - minprice;
+                dayToSell = i ;
+                dayToBuy = minPriceIndex ;
+            }
+        }
+        return maxprofit;
+    }
+
+
+    public int getSellDay() {
+        return dayToSell;
+    }
+
+    public int getBuyDay() {
+        return dayToBuy ;
+    }
+
+
 }
 /*
 public class BuyAndSellGold implements SolutionInterface {
